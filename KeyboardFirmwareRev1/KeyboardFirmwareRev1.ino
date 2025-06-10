@@ -1,13 +1,4 @@
- __   __          
-|  |_|  |--.-----.
-|   _|     |  -__|
-|____|__|__|_____|
- ______     ______     __   __     ______     ______   __  __     ______     ______     __  __    
-/\  ___\   /\  __ \   /\ "-.\ \   /\  ___\   /\__  _\ /\ \/\ \   /\  __ \   /\  == \   /\ \_\ \   
-\ \___  \  \ \  __ \  \ \ \-.  \  \ \ \____  \/_/\ \/ \ \ \_\ \  \ \  __ \  \ \  __<   \ \____ \  
- \/\_____\  \ \_\ \_\  \ \_\\"\_\  \ \_____\    \ \_\  \ \_____\  \ \_\ \_\  \ \_\ \_\  \/\_____\ 
-  \/_____/   \/_/\/_/   \/_/ \/_/   \/_____/     \/_/   \/_____/   \/_/\/_/   \/_/ /_/   \/_____/ 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+     //////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                  //
 //    Firmware for the Sanctuary Keyboard                                                           //
 //    Designed by: Foster Phillips, Lego_Rocket on many social media                                //
@@ -23,25 +14,14 @@
 
 
 //Libraries used
-#include <SimpleRotary.h>       //Used for the rotary encoder, just need to receive the simple direction
 #include <BleKeyboard.h>        //Primary heavyweight for sending keystrokes
 #include <EEPROM.h>             //Used for storage of MAC address selection
-#include <FastLED.h>            //Used for LEDs on keyboards - only applicable to certain Sanctuary mdoels
 
-#include "SanctuaryHardware.h"  //Definitions file, for all the hardware - removes and simplifies from this file
+#include "SanctuaryHardware.h"  //Definitions file, for all the hardware
 
-
-//Setup memory for LEDs
-CRGB leds[NumLeds];
 
 //Setup keyboard
-BleKeyboard Kbd("Sanctuary","Lego_Rocket",100);
-
-
-SimpleRotary rotary(Rotary1,Rotary2,40);    //Setup media rotary encoder
-byte RDir, PrevRDir;                        //Keep track of Rotary Encoder Direction
-
-
+BleKeyboard Kbd("My Keyboard","YourName",100);
 
 
 //  Code to "store" devices, so that the keyboard can switch connections on the fly ////////////////////////////////////////////////////////////////////////
@@ -72,25 +52,4 @@ void changeID(int DevNum)
       esp_sleep_enable_timer_wakeup(1);
       esp_deep_sleep_start(); 
     }
-}
-
-
-uint8_t gHue = 0;                                       //Keep track of the colour wanted
-
-//LED Function, to be expanded upon to add more LED functionality later
-void LedMode (int Select)
-{
-  switch(Select)
-  {
-    case 1:
-      gHue++;
-      fill_rainbow(leds, NumLeds, gHue, 7);
-      break;
-    case 2:
-      fill_solid(leds, NumLeds, CRGB::Cyan);      
-      break;
-    default:
-      break;
-  }
-  FastLED.show();
 }

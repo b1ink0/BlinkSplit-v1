@@ -1,60 +1,96 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                //
-//    Firmware for the Sanctuary Keyboard                                                         //
-//    Designed by: Foster Phillips, Lego_Rocket on many social media                              //
-//    Primarily used to run the firmware behind the Sanctuary                                     //
-//    Keyboard and kits to be sold at one point                                                   //
-//      Firmware will be open source - hardware will be closed source                             //
-//    This File is the last to compile - it is the main computing for the keyboard                //
-//      This is to allow the seperation of variables, to change the matrix easier                 //
+//    Firmware for Custom Keyboard                                                               //
+//    Modified from Sanctuary Keyboard Firmware                                                  //
 //                                                                                                //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//Setup, onces once on boot
+//Setup, once on boot
 void setup() {
+  Serial.begin(115200);
+  delay(1000); // Give serial time to initialize
   
-  //Battery voltage reading pin
-  pinMode(0,INPUT);
-
-  //Initialize row output pin and set default state
+  Serial.println("Starting keyboard setup...");
+  
+  //Initialize row output pins and set default state
   for(int i = 0; i < NumRows; i++)
   {
     pinMode(Rows[i],OUTPUT);  
-    digitalWrite(Rows[i],LOW);
+    digitalWrite(Rows[i],HIGH);  // Set HIGH for pullup configuration
+    Serial.print("Row ");
+    Serial.print(i);
+    Serial.print(" on pin ");
+    Serial.println(Rows[i]);
   }
 
-  //Initialize column pins as input, with Pulldown (if available - certain pins need hardware pulldown)
+  //Initialize column pins as input with pullup
   for(int i = 0; i < NumCols; i++)
   {
-    pinMode(Cols[i],INPUT_PULLDOWN);
+    pinMode(Cols[i],INPUT_PULLUP);
+    Serial.print("Col ");
+    Serial.print(i);
+    Serial.print(" on pin ");
+    Serial.println(Cols[i]);
   }
   
-  //Fast LED setup
-  FastLED.addLeds<LedType,DataPin,ColorOrder>(leds, NumLeds);
-  FastLED.setBrightness(40);
+  // Print the key layout for debugging
+  Serial.println("Key Layout (Row x Col):");
+  for(int r = 0; r < NumRows; r++) {
+    Serial.print("Row ");
+    Serial.print(r);
+    Serial.print(": ");
+    for(int c = 0; c < NumCols; c++) {
+      Serial.print(Layer1[0][r][c]);
+      Serial.print("\t");
+    }
+    Serial.println();
+  }
+  
+  //EEPROM and MAC address setup - keep existing functionality
+  EEPROM.begin(4);
+  int deviceChose = EEPROM.read(0);
+  Serial.print("Device chosen: ");
+  Serial.println(deviceChose);
+  esp_base_mac_addr_set(&MACAddress[deviceChose][0]);
 
-  //Adapted from GitHub, alongside the MAC address code
-    //Allows the keyboard to connect to multiple devices, and "remembers" what device it was connected to
-  EEPROM.begin(4);                                      //Begin EEPROM, allow us to store
-  int deviceChose = EEPROM.read(0);                     //Read selected address from storage
-  esp_base_mac_addr_set(&MACAddress[deviceChose][0]);   //Set MAC address based on that stored value
-
-  //Begin bluetooth keyboard, without keyboard will not appear or connect
+  //Begin bluetooth keyboard
+  Serial.println("Starting BLE keyboard...");
   Kbd.begin();
+  
+  Serial.println("Keyboard setup complete!");
+  Serial.println("Waiting for BLE connection...");
 }
 
-
-
-int RowCnt = 0;                                              //Keep track of scanned row - needs to be outside of the void loop so it isn't reset
+int RowCnt = 0;
 int LayerCnt = 0;
-//Loops to iterate through all functions
+
+//Main loop
 void loop() {
+  // Add debugging every few seconds to show matrix scanning is working
+  static unsigned long lastDebug = 0;
+  static bool debugMode = false;
+  
+  if (millis() - lastDebug > 10000) { // Every 10 seconds
+    debugMode = !debugMode;
+    Serial.print("Debug mode: ");
+    Serial.println(debugMode ? "ON" : "OFF");
+    lastDebug = millis();
+  }
+  
   //Check if the keyboard is connected, if so, scan the matrix
   if(Kbd.isConnected())
   {
-    //Initialize new Row to scan
-    digitalWrite(Rows[RowCnt],HIGH);
-
+    static bool connectionLogged = false;
+    if (!connectionLogged) {
+      Serial.println("BLE Keyboard connected!");
+      connectionLogged = true;
+    }
+    
+    //Set current row LOW to scan (since using pullup)
+    digitalWrite(Rows[RowCnt],LOW);
+    
+    //Small delay for signal to stabilize
+    delayMicroseconds(30);
     
     //Check columns
     int ColCnt = 0;
@@ -62,72 +98,98 @@ void loop() {
     //Repeat until all columns are scanned
     while(ColCnt <= (NumCols - 1))
     {
-      //Check state of current position, and make sure it was previously off
-      if(digitalRead( Cols[ColCnt] ) == HIGH && PressedCheck[LayerCnt][RowCnt][ColCnt] == OFF)
+      // Show raw pin states if debug mode is on
+      if(debugMode && RowCnt == 0 && ColCnt == 0) {
+        // Serial.print("Scanning R");
+        // Serial.print(RowCnt);
+        // Serial.print(" (pin ");
+        // Serial.print(Rows[RowCnt]);
+        // Serial.print("=LOW) - Col states: ");
+        // for(int i = 0; i < NumCols; i++) {
+        //   Serial.print("C");
+        //   Serial.print(i);
+        //   Serial.print(":");
+        //   Serial.print(digitalRead(Cols[i]));
+        //   Serial.print(" ");
+        // }
+        // Serial.println();
+      }
+      
+      //Check state of current position - LOW means pressed with pullup
+      if(digitalRead(Cols[ColCnt]) == LOW && PressedCheck[LayerCnt][RowCnt][ColCnt] == OFF)
       {
-        //Switch based on the key pressed, allows for unique functions other than alphanumerics
+        Serial.print("Key pressed at Row:");
+        Serial.print(RowCnt);
+        Serial.print(" Col:");
+        Serial.print(ColCnt);
+        Serial.print(" Key code:");
+        Serial.println(Layer1[LayerCnt][RowCnt][ColCnt]);
+        
+        //Use existing switch structure for special keys
         switch(Layer1[LayerCnt][RowCnt][ColCnt])
         {
-          //Change the ID of the bluetooth, so you can connect to another device
+          //Keep existing special cases
           case 0:
           case 1:
           case 2:
+            Serial.println("Changing device ID");
             changeID(Layer1[LayerCnt][RowCnt][ColCnt]);
             break;
-          //Rotary encoder button, play pause not an int
-          case 3:
-            Kbd.press(KEY_MEDIA_PLAY_PAUSE);
-            break;
-          //All other buttons are pressed through the Layer array
           case 5:
+            Serial.println("Restarting ESP");
             ESP.restart();
             break;
           case FUNCTION_SW:
-            //PressedCheck.fill(OFF);
+            Serial.println("Function key pressed");
             Kbd.releaseAll();
             LayerCnt++;
             break;
           case NULL_CON:
+            Serial.println("NULL key - no action");
             break;
           case NEXT:
+            Serial.println("Next track");
             Kbd.press(KEY_MEDIA_NEXT_TRACK);
             Kbd.releaseAll();
             break;
           case PREV:
+            Serial.println("Previous track");
             Kbd.press(KEY_MEDIA_PREVIOUS_TRACK);
             break;
           default:
-            Kbd.press( Layer1[LayerCnt][RowCnt][ColCnt] );
+            Serial.print("Pressing key: ");
+            if (Layer1[LayerCnt][RowCnt][ColCnt] >= 32 && Layer1[LayerCnt][RowCnt][ColCnt] <= 126) {
+              Serial.println((char)Layer1[LayerCnt][RowCnt][ColCnt]);
+            } else {
+              Serial.println(Layer1[LayerCnt][RowCnt][ColCnt]);
+            }
+            Kbd.press(Layer1[LayerCnt][RowCnt][ColCnt]);
         }
-        //Assign the current key as ON, so it doesn't constantly press the button
         PressedCheck[LayerCnt][RowCnt][ColCnt] = ON;   
-        //Serial.print( Layer1[a][ColCnt] );
       }
 
-      //Otherwise, check if the switch was released
-      else if(digitalRead( Cols[ColCnt] ) == LOW && PressedCheck[LayerCnt][RowCnt][ColCnt] == ON)
+      //Check if key was released - HIGH with pullup means released
+      else if(digitalRead(Cols[ColCnt]) == HIGH && PressedCheck[LayerCnt][RowCnt][ColCnt] == ON)
       {
-        //Switch based on the switch released
+        Serial.print("Key released at Row:");
+        Serial.print(RowCnt);
+        Serial.print(" Col:");
+        Serial.println(ColCnt);
+        
+        //Use existing switch structure for key releases
         switch(Layer1[LayerCnt][RowCnt][ColCnt])
         {
-          //Nothing for the tactile switch
           case 1:
           case 2:
           case 0:
             break;
-          //Release the rotary encoder button
-          case 3:
-            Kbd.release(KEY_MEDIA_PLAY_PAUSE);
-            break;
           case FUNCTION_SW:
+            Serial.println("Function key released");
             PressedCheck[LayerCnt][RowCnt][ColCnt] = OFF;
             if(LayerCnt > 0)
             {
               LayerCnt--;
             }
-            Kbd.release(KEY_MEDIA_PLAY_PAUSE);            
-            Kbd.release(KEY_MEDIA_PREVIOUS_TRACK);
-            Kbd.release(KEY_MEDIA_NEXT_TRACK);
             Kbd.releaseAll();
             break;
           case NULL_CON:
@@ -136,9 +198,6 @@ void loop() {
             {
               LayerCnt--;
             }
-            Kbd.release(KEY_MEDIA_PLAY_PAUSE);            
-            Kbd.release(KEY_MEDIA_PREVIOUS_TRACK);
-            Kbd.release(KEY_MEDIA_NEXT_TRACK);
             Kbd.releaseAll();
             break;
           case NEXT:
@@ -147,67 +206,39 @@ void loop() {
           case PREV:
             Kbd.release(KEY_MEDIA_PREVIOUS_TRACK);
             break;
-          //Release all other keys on the keyboard
           default:
-            Kbd.release( Layer1[LayerCnt][RowCnt][ColCnt] );
+            Serial.print("Releasing key: ");
+            if (Layer1[LayerCnt][RowCnt][ColCnt] >= 32 && Layer1[LayerCnt][RowCnt][ColCnt] <= 126) {
+              Serial.println((char)Layer1[LayerCnt][RowCnt][ColCnt]);
+            } else {
+              Serial.println(Layer1[LayerCnt][RowCnt][ColCnt]);
+            }
+            Kbd.release(Layer1[LayerCnt][RowCnt][ColCnt]);
         }
-        //Let the keyboard know it's off, and to not constantly release keys that aren't released
         PressedCheck[LayerCnt][RowCnt][ColCnt] = OFF;
       }
-      //Increase column to scan
       ColCnt++;
     }
-    //Reset back to original row to scan
-    digitalWrite(Rows[RowCnt],LOW);
-    //Increase row outputted
+    
+    //Reset row back to HIGH
+    digitalWrite(Rows[RowCnt],HIGH);
+    
+    //Move to next row
     RowCnt++;
-    //Loop back to original row if out of the number of rows
-    if(RowCnt >= (NumRows))
+    if(RowCnt >= NumRows)
     {
       RowCnt = 0;
     }
-  
-    //Check Rotary Encoder once a cycle
-    RDir = rotary.rotate();
-    switch(RDir)
-    {
-      case 1:
-        if(PrevRDir != RDir)
-        {
-          Kbd.release(KEY_MEDIA_VOLUME_UP);
-        }
-        Kbd.press(KEY_MEDIA_VOLUME_DOWN);
-        PrevRDir = 1;
-        break;
-      case 2:
-        if(PrevRDir != RDir)
-        {
-          Kbd.release(KEY_MEDIA_VOLUME_DOWN);
-        }
-        Kbd.press(KEY_MEDIA_VOLUME_UP);
-        PrevRDir = 2;
-        break;
-      default:
-        switch(PrevRDir)
-        {
-          case 1:
-            Kbd.release(KEY_MEDIA_VOLUME_DOWN);
-            break;
-          case 2:
-            Kbd.release(KEY_MEDIA_VOLUME_UP);
-            break;
-        }
-        PrevRDir = 0;
-        break;
-    }
   }
-
-  //Every 25 milliseconds refresh LEDs
-  EVERY_N_MILLISECONDS(25) 
+  else 
   {
-    LedMode(2);
+    static unsigned long lastConnectionCheck = 0;
+    if (millis() - lastConnectionCheck > 5000) { // Log every 5 seconds
+      Serial.println("Waiting for BLE connection...");
+      lastConnectionCheck = millis();
+    }
   }
   
   //Delay so it's not too fast
-  delay(1);
+  delay(10);
 }
