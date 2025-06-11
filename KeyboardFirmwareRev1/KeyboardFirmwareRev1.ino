@@ -16,8 +16,7 @@
 //Libraries used
 #include <BleKeyboard.h>        //Primary heavyweight for sending keystrokes
 #include <EEPROM.h>             //Used for storage of MAC address selection
-
-#include "SanctuaryHardware.h"  //Definitions file, for all the hardware
+#include "Hardware.h"  //Definitions file, for all the hardware
 
 
 //Setup keyboard
