@@ -1,9 +1,9 @@
 //Rows to scan, and Columns to read - Fixed order
-short Rows[NumRows] = {Row1, Row2, Row3, Row4, Row5, Row6};
-short Cols[NumCols] = {Col1, Col2, Col3, Col4, Col5, Col6};
+short Rows[ NumRows ] = { Row1, Row2, Row3, Row4, Row5, Row6 };
+short Cols[ NumCols ] = { Col1, Col2, Col3, Col4, Col5, Col6 };
 
 //Keyboard layout - Using your original layout (non-transposed)
-int Layer1[NumLayers][NumRows][NumCols] = 
+int Layer1[ NumLayers ][ NumRows ][ NumCols ] = 
 {
   {
     { KEY_ESC,       KEY_F1,       KEY_F2,       KEY_F3,       KEY_F4,       KEY_F5       },  // Row 1
@@ -16,4 +16,4 @@ int Layer1[NumLayers][NumRows][NumCols] =
 };
 
 //Array to check if a key is currently pressed
-short PressedCheck[NumLayers][NumRows][NumCols] = { OFF };
+short PressedCheck[ NumLayers ][ NumRows ][ NumCols ] = { OFF };

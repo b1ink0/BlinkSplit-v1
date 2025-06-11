@@ -1,13 +1,13 @@
-     //////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                  //
 //    Firmware for the Sanctuary Keyboard                                                           //
 //    Designed by: Foster Phillips, Lego_Rocket on many social media                                //
 //    https://linktr.ee/Lego_Rocket                                                                 //
 //    Primarily used to run the firmware behind the Sanctuary                                       //
 //    Keyboard and kits to be sold at one point                                                     //
-//      Firmware will be open source - hardware will be closed source                               //
+//    Firmware will be open source - hardware will be closed source                                 //
 //    This File is the first to compile - it does NOT include the main() functions                  //
-//      That is only going to be in the _Main file, to allow for easy changing of Matrix functions  //
+//    That is only going to be in the _Main file, to allow for easy changing of Matrix functions    //
 //                                                                                                  //
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -21,35 +21,30 @@
 
 
 //Setup keyboard
-BleKeyboard Kbd("My Keyboard","YourName",100);
+BleKeyboard Kbd( "My Keyboard", "YourName", 100 );
 
 
-//  Code to "store" devices, so that the keyboard can switch connections on the fly ////////////////////////////////////////////////////////////////////////
-//Adapted from : https://github.com/Cemu0/ESP32_USBHOST_TO_BLE_KEYBOARD/blob/main/src/USBHIDBootBLEKbd.cpp
-//Primarily stores the selected MAC address in EEPROM storage
+// Code to "store" devices, so that the keyboard can switch connections on the fly
+// Adapted from : https://github.com/Cemu0/ESP32_USBHOST_TO_BLE_KEYBOARD/blob/main/src/USBHIDBootBLEKbd.cpp
+// Primarily stores the selected MAC address in EEPROM storage
 const int maxdevice = 3;
-uint8_t MACAddress[maxdevice][6] = 
+uint8_t MACAddress[maxdevice][ 6 ] = 
 {
   {0x35, 0xAF, 0xA4, 0x07, 0x0B, 0x66},
   {0x31, 0xAE, 0xAA, 0x47, 0x0D, 0x61},
   {0x31, 0xAE, 0xAC, 0x42, 0x0A, 0x31}
-  
 };
 
-//Basically just change the selected ID and reset - MAC address can only be changed before the keyboard start, so write to store selection, until changed again
-  //Take in device number, and set the EEPROM to the selected - selects what address to shift to, instead of iterating to that address
-void changeID(int DevNum)
-{
-    //Serial.println("changing MAC...");
-
+// Basically just change the selected ID and reset - MAC address can only be changed before the keyboard start, so write to store selection, until changed again
+// Take in device number, and set the EEPROM to the selected - selects what address to shift to, instead of iterating to that address
+void changeID( int DevNum ) {
     //Make sure the selection is valid
-    if(DevNum < maxdevice)
+    if( DevNum < maxdevice )
     {
       //Write and commit to storage, reset ESP 32
       EEPROM.write(0,DevNum);
       EEPROM.commit();
-      //esp_reset();
-      esp_sleep_enable_timer_wakeup(1);
+      esp_sleep_enable_timer_wakeup( 1 );
       esp_deep_sleep_start(); 
     }
 }
