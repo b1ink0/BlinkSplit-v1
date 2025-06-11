@@ -1,7 +1,8 @@
+#include <Arduino.h>
 #include <BleKeyboard.h>
-#include "Hardware.h"
-#include "KeyboardUtils.h"
-#include "KeyProcessing.h"
+#include "../inc/Hardware.h"
+#include "../inc/KeyboardUtils.h"
+#include "../inc/KeyProcessing.h"
 
 // Main matrix scanning function
 void scanMatrix() {

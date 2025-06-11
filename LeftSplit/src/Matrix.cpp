@@ -1,3 +1,7 @@
+#include <Arduino.h>
+#include <BleKeyboard.h>
+#include "../inc/Hardware.h"
+
 //Rows to scan, and Columns to read - Fixed order
 short Rows[ NumRows ] = { Row1, Row2, Row3, Row4, Row5, Row6 };
 short Cols[ NumCols ] = { Col1, Col2, Col3, Col4, Col5, Col6 };
