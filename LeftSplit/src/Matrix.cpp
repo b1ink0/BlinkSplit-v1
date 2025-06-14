@@ -1,12 +1,7 @@
 #include <Arduino.h>
-#include <BleKeyboard.h>
 #include "../inc/Hardware.h"
 
-//Rows to scan, and Columns to read - Fixed order
-short Rows[ NumRows ] = { Row1, Row2, Row3, Row4, Row5, Row6 };
-short Cols[ NumCols ] = { Col1, Col2, Col3, Col4, Col5, Col6 };
-
-//Keyboard layout - Using your original layout (non-transposed)
+// Keyboard layout - Left split layout
 int Layer1[ NumLayers ][ NumRows ][ NumCols ] = 
 {
   {
@@ -19,5 +14,5 @@ int Layer1[ NumLayers ][ NumRows ][ NumCols ] =
   }
 };
 
-//Array to check if a key is currently pressed
+// Array to check if a key is currently pressed
 short PressedCheck[ NumLayers ][ NumRows ][ NumCols ] = { OFF };

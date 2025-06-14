@@ -1,90 +1,187 @@
 #include <Arduino.h>
-#include <BleKeyboard.h>
-#include <EEPROM.h>
+#include <Wire.h>
 #include "../inc/Hardware.h"
 #include "../inc/KeyboardUtils.h"
-
-//Setup keyboard - moved from main file
-BleKeyboard Kbd( "My Keyboard", "YourName", 100 );
-
-// Code to "store" devices, so that the keyboard can switch connections on the fly
-// Adapted from : https://github.com/Cemu0/ESP32_USBHOST_TO_BLE_KEYBOARD/blob/main/src/USBHIDBootBLEKbd.cpp
-// Primarily stores the selected MAC address in EEPROM storage
-const int maxdevice = 3;
-uint8_t MACAddress[maxdevice][ 6 ] = 
-{
-  {0x35, 0xAF, 0xA4, 0x07, 0x0B, 0x66},
-  {0x31, 0xAE, 0xAA, 0x47, 0x0D, 0x61},
-  {0x31, 0xAE, 0xAC, 0x42, 0x0A, 0x31}
-};
-
-// Basically just change the selected ID and reset - MAC address can only be changed before the keyboard start, so write to store selection, until changed again
-// Take in device number, and set the EEPROM to the selected - selects what address to shift to, instead of iterating to that address
-void changeID( int DevNum ) {
-    //Make sure the selection is valid
-    if( DevNum < maxdevice )
-    {
-      //Write and commit to storage, reset ESP 32
-      EEPROM.write(0,DevNum);
-      EEPROM.commit();
-      esp_sleep_enable_timer_wakeup( 1 );
-      esp_deep_sleep_start(); 
-    }
-}
 
 // Global variables for matrix scanning
 int RowCnt = 0;
 int LayerCnt = 0;
-static bool connectionLogged = false;
+static bool serialConnected = false;
+static uint16_t pcfState = 0xFFFF; // All pins high initially
+bool pcfInitialized = false;
+static unsigned long lastErrorTime = 0;
+static int errorCount = 0;
+static byte detectedPCFAddress = 0; // Store the detected address
 
-// Initialize hardware pins and EEPROM
+// Initialize hardware pins and I²C
 void initializeHardware() {
-  // Initialize row output pins and set default state
-  for ( int i = 0; i < NumRows; i++ ) {
-    pinMode( Rows[ i ], OUTPUT );  
-    digitalWrite( Rows[ i ], HIGH );  // Set HIGH for pullup configuration
-  }
-
-  // Initialize column pins as input with pullup
-  for ( int i = 0; i < NumCols; i++ ) {
-    pinMode( Cols[ i ], INPUT_PULLUP );
+  Serial.println( "Initializing left split hardware..." );
+  
+  // Initialize I²C communication
+  Wire.begin( SDA_PIN, SCL_PIN );
+  Wire.setClock( 100000 ); // 100kHz I²C speed
+  
+  Serial.println( "I²C pins initialized:" );
+  Serial.print( "SDA: GPIO" );
+  Serial.println( SDA_PIN );
+  Serial.print( "SCL: GPIO" );
+  Serial.println( SCL_PIN );
+  
+  // Auto-detect PCF8575 address
+  Serial.println( "Auto-detecting PCF8575..." );
+  
+  // PCF8575 can be at addresses 0x20-0x27
+  byte pcfAddresses[] = { 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27 };
+  bool pcfFound = false;
+  
+  for ( int i = 0; i < 8; i++ ) {
+    byte testAddress = pcfAddresses[i];
+    
+    Serial.print( "Testing address 0x" );
+    Serial.print( testAddress, HEX );
+    Serial.print( "... " );
+    
+    // Test by trying to write to the device
+    Wire.beginTransmission( testAddress );
+    Wire.write( 0xFF ); // Low byte
+    Wire.write( 0xFF ); // High byte
+    byte error = Wire.endTransmission();
+    
+    if ( error == 0 ) {
+      Serial.println( "FOUND!" );
+      detectedPCFAddress = testAddress;
+      pcfFound = true;
+      break;
+    } else {
+      Serial.println( "not found" );
+    }
+    
+    delay( 10 ); // Small delay between tests
   }
   
-  // EEPROM and MAC address setup
-  EEPROM.begin( 4 );
-  int deviceChose = EEPROM.read( 0 );
-  Serial.print( "Device chosen: " );
-  Serial.println( deviceChose );
-  esp_base_mac_addr_set( &MACAddress[ deviceChose ][ 0 ] );
+  if ( !pcfFound ) {
+    Serial.println( "No PCF8575 found at any standard address!" );
+    Serial.println( "Check wiring:" );
+    Serial.println( "- VCC to 3.3V" );
+    Serial.println( "- GND to GND" );
+    Serial.println( "- SDA to D2 (GPIO4)" );
+    Serial.println( "- SCL to D1 (GPIO5)" );
+    pcfInitialized = false;
+    return;
+  }
+  
+  Serial.print( "PCF8575 auto-detected at address 0x" );
+  Serial.println( detectedPCFAddress, HEX );
+  
+  // Set initial state
+  pcfState = 0xFFFF;
+  pcfInitialized = true;
+  Serial.println( "PCF8575 initialized successfully" );
 }
 
-// Initialize Bluetooth keyboard
-void initializeBluetooth() {
-  Serial.println( "Starting BLE keyboard..." );
-  Kbd.begin();
-  Serial.println( "Waiting for BLE connection..." );
+// Initialize serial communication with right split
+void initializeSerial() {
+  Serial.println( "Left split ready for communication" );
 }
 
-// Set row pin state with bounds checking
+// Write 16-bit value to PCF8575 - return success/failure
+bool writePCF8575( uint16_t value ) {
+  if ( !pcfInitialized ) {
+    return false;
+  }
+  
+  Wire.beginTransmission( detectedPCFAddress ); // Use detected address
+  Wire.write( value & 0xFF );        // Low byte
+  Wire.write( ( value >> 8 ) & 0xFF ); // High byte
+  byte error = Wire.endTransmission();
+  
+  if ( error != 0 ) {
+    errorCount++;
+    // Only log errors occasionally to avoid spam
+    if ( millis() - lastErrorTime > 5000 ) {
+      Serial.print( "PCF8575 write error (count: " );
+      Serial.print( errorCount );
+      Serial.println( ")" );
+      lastErrorTime = millis();
+    }
+    return false;
+  }
+  
+  return true;
+}
+
+// Read 16-bit value from PCF8575
+uint16_t readPCF8575() {
+  if ( !pcfInitialized ) {
+    return 0xFFFF;
+  }
+  
+  Wire.requestFrom( detectedPCFAddress, 2 ); // Use detected address
+  
+  // Wait a bit for data
+  int timeout = 0;
+  while ( Wire.available() < 2 && timeout < 100 ) {
+    delayMicroseconds( 10 );
+    timeout++;
+  }
+  
+  if ( Wire.available() >= 2 ) {
+    uint8_t lowByte = Wire.read();
+    uint8_t highByte = Wire.read();
+    return ( highByte << 8 ) | lowByte;
+  }
+  
+  errorCount++;
+  // Only log read errors occasionally
+  if ( millis() - lastErrorTime > 5000 ) {
+    Serial.print( "PCF8575 read error (count: " );
+    Serial.print( errorCount );
+    Serial.println( ")" );
+    lastErrorTime = millis();
+  }
+  return 0xFFFF; // Return all high on error
+}
+
+// Set row pin state with PCF8575
 void setRowState( int row, bool state ) {
+  if ( !pcfInitialized ) {
+    return; // Skip if not initialized
+  }
+  
   if ( row >= 0 && row < NumRows ) {
-    digitalWrite( Rows[ row ], state ? HIGH : LOW );
+    if ( state ) {
+      // Set row pin high
+      pcfState |= ( 1 << row );
+    } else {
+      // Set row pin low
+      pcfState &= ~( 1 << row );
+    }
+    
+    writePCF8575( pcfState );
   }
 }
 
-// Check Bluetooth connection status
-void checkBluetoothConnection() {
-  if ( Kbd.isConnected() ) {
-    if ( !connectionLogged ) {
-      Serial.println( "BLE Keyboard connected!" );
-      connectionLogged = true;
+// Send key press/release to right split via serial
+void sendKeyToRight( int keyCode, bool isPress ) {
+  Serial.print( isPress ? "P:" : "R:" );
+  Serial.println( keyCode );
+}
+
+// Check serial connection status
+void checkSerialConnection() {
+  static unsigned long lastCheck = 0;
+  if ( millis() - lastCheck > 30000 ) { // Only log every 30 seconds
+    if ( pcfInitialized ) {
+      Serial.print( "Left split active - PCF8575 at 0x" );
+      Serial.println( detectedPCFAddress, HEX );
+    } else {
+      Serial.println( "Left split - PCF8575 not initialized" );
     }
-  } else {
-    connectionLogged = false;
-    static unsigned long lastConnectionCheck = 0;
-    if ( millis() - lastConnectionCheck > 5000 ) { // Log every 5 seconds
-      Serial.println( "Waiting for BLE connection..." );
-      lastConnectionCheck = millis();
-    }
+    lastCheck = millis();
   }
+}
+
+// Get the detected PCF8575 address (for debugging)
+byte getPCF8575Address() {
+  return detectedPCFAddress;
 }
