@@ -2,7 +2,7 @@
 #define OFF 0
 #define ON 1
 
-//Pin Definitions - Fixed based on your actual wiring
+//Pin Definitions - Right split direct GPIO
 #define Col7 15
 #define Col8 16
 #define Col9 17
@@ -19,15 +19,23 @@
 #define Row5 13
 #define Row6 14
 
-// Serial communication pins for left split communication
-#define SERIAL_RX2 25  // GPIO25 - connects to D+ of USB-C (from left split TX)
-#define SERIAL_TX2 26  // GPIO26 - connects to D- of USB-C (to left split RX)
+// I²C pins for left split PCF8575 communication via USB-C
+#define SDA_PIN 25  // GPIO25 - connects to D+ of USB-C
+#define SCL_PIN 26  // GPIO26 - connects to D- of USB-C
 
-//Matrix setup - Updated for 6x8
+//Matrix setup
 #define NumRows 6
-#define NumCols 8
+#define NumCols 8  // Right split has 8 columns
+#define LeftNumCols 6  // Left split has 6 columns
 #define NumLayers 1
 
+// PCF8575 pin mapping for left split matrix
+// Rows: P0_0 to P0_5 (bits 0-5 of lower byte)
+#define LEFT_ROW_MASK 0x003F  // Bits 0-5 for rows
+// Cols: P1_0 to P1_5 (bits 8-13 of 16-bit word)
+#define LEFT_COL_MASK 0x3F00  // Bits 8-13 for columns
+
+// Special key definitions
 #define FUNCTION_SW   256
 #define NULL_CON      257
 #define NEXT          258

@@ -4,68 +4,138 @@
 #include "../inc/KeyboardUtils.h"
 #include "../inc/KeyProcessing.h"
 
-// Main matrix scanning function
+// Main matrix scanning function - scans both splits
 void scanMatrix() {
-  // Set current row LOW to scan (since using pullup)
+  // Scan right split (direct GPIO)
+  scanRightMatrix();
+  
+  // Scan left split (via PCF8575) if connected
+  if ( leftSplitConnected ) {
+    scanLeftMatrix();
+  }
+}
+
+// Scan right split matrix (direct GPIO)
+void scanRightMatrix() {
+  // Set current row LOW to scan
   setRowState( RowCnt, LOW );
   
-  // Small delay for signal to stabilize
   delayMicroseconds( 20 );
   
   // Scan all columns in current row
   for ( int ColCnt = 0; ColCnt < NumCols; ColCnt++ ) {
     bool keyPressed = ( digitalRead( Cols[ ColCnt ] ) == LOW );
-    bool wasPressed = ( PressedCheck[ LayerCnt ][ RowCnt ][ ColCnt ] == ON );
+    bool wasPressed = ( RightPressedCheck[ LayerCnt ][ RowCnt ][ ColCnt ] == ON );
     
     if ( keyPressed && !wasPressed ) {
-      // Key press detected
-      handleKeyPress( RowCnt, ColCnt );
+      handleRightKeyPress( RowCnt, ColCnt );
     } else if ( !keyPressed && wasPressed ) {
-      // Key release detected
-      handleKeyRelease( RowCnt, ColCnt );
+      handleRightKeyRelease( RowCnt, ColCnt );
     }
   }
   
   // Reset row back to HIGH
   setRowState( RowCnt, HIGH );
+}
+
+// Scan left split matrix (via PCF8575)
+void scanLeftMatrix() {
+  if ( !pcfInitialized ) {
+    return;
+  }
   
-  // Move to next row
+  // Set current row LOW to scan
+  setLeftRowState( RowCnt, LOW );
+  
+  delayMicroseconds( 20 );
+  
+  // Read all pins from PCF8575
+  uint16_t pinStates = readPCF8575();
+  
+  if ( pinStates == 0xFFFF ) {
+    setLeftRowState( RowCnt, HIGH );
+    return;
+  }
+  
+  // Extract column states (bits 8-13)
+  uint8_t colStates = ( pinStates >> 8 ) & 0x3F;
+  
+  // Scan all columns in current row
+  for ( int ColCnt = 0; ColCnt < LeftNumCols; ColCnt++ ) {
+    bool keyPressed = !( colStates & ( 1 << ColCnt ) ); // Inverted because of pullup
+    bool wasPressed = ( LeftPressedCheck[ LayerCnt ][ RowCnt ][ ColCnt ] == ON );
+    
+    if ( keyPressed && !wasPressed ) {
+      handleLeftKeyPress( RowCnt, ColCnt );
+    } else if ( !keyPressed && wasPressed ) {
+      handleLeftKeyRelease( RowCnt, ColCnt );
+    }
+  }
+  
+  // Reset row back to HIGH
+  setLeftRowState( RowCnt, HIGH );
+  
+  // Move to next row (shared counter for both splits)
   RowCnt++;
   if ( RowCnt >= NumRows ) {
     RowCnt = 0;
   }
 }
 
-// Handle key press events
-void handleKeyPress( int row, int col ) {
-  int keyCode = Layer1[ LayerCnt ][ row ][ col ];
+// Handle right split key press
+void handleRightKeyPress( int row, int col ) {
+  int keyCode = RightLayer1[ LayerCnt ][ row ][ col ];
   
-  // Process special keys first
   if ( keyCode <= 5 || keyCode >= FUNCTION_SW ) {
     processSpecialKey( keyCode, row, col, true );
   } else {
-    // Regular key
     processRegularKey( keyCode, true );
-    logKeyAction( keyCode, true );
+    logKeyAction( keyCode, true, "RIGHT" );
   }
   
-  PressedCheck[ LayerCnt ][ row ][ col ] = ON;
+  RightPressedCheck[ LayerCnt ][ row ][ col ] = ON;
 }
 
-// Handle key release events
-void handleKeyRelease( int row, int col ) {
-  int keyCode = Layer1[ LayerCnt ][ row ][ col ];
+// Handle right split key release
+void handleRightKeyRelease( int row, int col ) {
+  int keyCode = RightLayer1[ LayerCnt ][ row ][ col ];
   
-  // Process special keys first
   if ( keyCode <= 5 || keyCode >= FUNCTION_SW ) {
     processSpecialKey( keyCode, row, col, false );
   } else {
-    // Regular key
     processRegularKey( keyCode, false );
-    logKeyAction( keyCode, false );
+    logKeyAction( keyCode, false, "RIGHT" );
   }
   
-  PressedCheck[ LayerCnt ][ row ][ col ] = OFF;
+  RightPressedCheck[ LayerCnt ][ row ][ col ] = OFF;
+}
+
+// Handle left split key press
+void handleLeftKeyPress( int row, int col ) {
+  int keyCode = LeftLayer1[ LayerCnt ][ row ][ col ];
+  
+  if ( keyCode <= 5 || keyCode >= FUNCTION_SW ) {
+    processSpecialKey( keyCode, row, col, true );
+  } else {
+    processRegularKey( keyCode, true );
+    logKeyAction( keyCode, true, "LEFT" );
+  }
+  
+  LeftPressedCheck[ LayerCnt ][ row ][ col ] = ON;
+}
+
+// Handle left split key release
+void handleLeftKeyRelease( int row, int col ) {
+  int keyCode = LeftLayer1[ LayerCnt ][ row ][ col ];
+  
+  if ( keyCode <= 5 || keyCode >= FUNCTION_SW ) {
+    processSpecialKey( keyCode, row, col, false );
+  } else {
+    processRegularKey( keyCode, false );
+    logKeyAction( keyCode, false, "LEFT" );
+  }
+  
+  LeftPressedCheck[ LayerCnt ][ row ][ col ] = OFF;
 }
 
 // Process special function keys
@@ -83,6 +153,7 @@ void processSpecialKey( int keyCode, int row, int col, bool isPress ) {
       case FUNCTION_SW:
         Kbd.releaseAll();
         LayerCnt++;
+        Serial.println( "Layer UP" );
         break;
       case NULL_CON:
         // Do nothing for null key
@@ -96,24 +167,19 @@ void processSpecialKey( int keyCode, int row, int col, bool isPress ) {
         break;
     }
   } else {
-    // Key release handling for special keys
     switch ( keyCode ) {
       case 0:
       case 1:
       case 2:
-        // No action needed on release for device change keys
         break;
       case FUNCTION_SW:
         if ( LayerCnt > 0 ) {
           LayerCnt--;
         }
         Kbd.releaseAll();
+        Serial.println( "Layer DOWN" );
         break;
       case NULL_CON:
-        if ( LayerCnt > 0 ) {
-          LayerCnt--;
-        }
-        Kbd.releaseAll();
         break;
       case NEXT:
         Kbd.release( KEY_MEDIA_NEXT_TRACK );
@@ -125,7 +191,7 @@ void processSpecialKey( int keyCode, int row, int col, bool isPress ) {
   }
 }
 
-// Process regular keys (letters, numbers, modifiers)
+// Process regular keys
 void processRegularKey( int keyCode, bool isPress ) {
   if ( isPress ) {
     Kbd.press( keyCode );
@@ -135,15 +201,19 @@ void processRegularKey( int keyCode, bool isPress ) {
 }
 
 // Log key actions for debugging
-void logKeyAction( int keyCode, bool isPress ) {
+void logKeyAction( int keyCode, bool isPress, const char* split ) {
   const char* action = isPress ? "PRESS" : "RELEASE";
   
   if ( keyCode >= 32 && keyCode <= 126 ) {
+    Serial.print( split );
+    Serial.print( " " );
     Serial.print( action );
     Serial.print( ": '" );
     Serial.print( (char)keyCode );
     Serial.println( "'" );
   } else {
+    Serial.print( split );
+    Serial.print( " " );
     Serial.print( action );
     Serial.print( ": " );
     Serial.println( keyCode );

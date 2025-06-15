@@ -6,10 +6,14 @@
 
 // Function prototypes for key processing
 void scanMatrix();
-void handleKeyPress( int row, int col );
-void handleKeyRelease( int row, int col );
+void scanRightMatrix();
+void scanLeftMatrix();
+void handleRightKeyPress( int row, int col );
+void handleRightKeyRelease( int row, int col );
+void handleLeftKeyPress( int row, int col );
+void handleLeftKeyRelease( int row, int col );
 void processSpecialKey( int keyCode, int row, int col, bool isPress );
 void processRegularKey( int keyCode, bool isPress );
-void logKeyAction( int keyCode, bool isPress );
+void logKeyAction( int keyCode, bool isPress, const char* split );
 
 #endif

@@ -3,29 +3,35 @@
 
 #include "Hardware.h"
 #include <BleKeyboard.h>
+#include <Wire.h>
 
 // Function prototypes
 void initializeHardware();
 void initializeBluetooth();
-void initializeSerial(); // Add this for left split communication
+void initializeI2C();
 void checkBluetoothConnection();
 void setRowState( int row, bool state );
+void setLeftRowState( int row, bool state );
 void changeID( int DevNum );
 
-// New functions for left split communication
-void processLeftSplitData();
-void handleLeftSplitKeyPress( int keyCode );
-void handleLeftSplitKeyRelease( int keyCode );
+// PCF8575 functions for left split
+uint16_t readPCF8575();
+bool writePCF8575( uint16_t value );
+byte getPCF8575Address();
 
 // Global variables
 extern int RowCnt;
 extern int LayerCnt;
+extern bool pcfInitialized;
+extern bool leftSplitConnected;
 
 // External references to arrays from Matrix.cpp
 extern short Rows[ NumRows ];
 extern short Cols[ NumCols ];
-extern int Layer1[ NumLayers ][ NumRows ][ NumCols ];
-extern short PressedCheck[ NumLayers ][ NumRows ][ NumCols ];
+extern int RightLayer1[ NumLayers ][ NumRows ][ NumCols ];
+extern int LeftLayer1[ NumLayers ][ NumRows ][ LeftNumCols ];
+extern short RightPressedCheck[ NumLayers ][ NumRows ][ NumCols ];
+extern short LeftPressedCheck[ NumLayers ][ NumRows ][ LeftNumCols ];
 
 // External references to BLE keyboard and MAC address storage
 extern BleKeyboard Kbd;
