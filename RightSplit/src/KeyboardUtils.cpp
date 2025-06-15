@@ -65,6 +65,17 @@ void initializeBluetooth() {
   Serial.println( "Waiting for BLE connection..." );
 }
 
+// Initialize serial communication for left split
+void initializeSerial() {
+  // Serial2 for communication with left split via USB-C
+  Serial2.begin( 115200, SERIAL_8N1, SERIAL_RX2, SERIAL_TX2 ); // RX2=GPIO25, TX2=GPIO26
+  Serial.println( "Serial communication initialized for left split" );
+  Serial.print( "RX2: GPIO" );
+  Serial.println( SERIAL_RX2 );
+  Serial.print( "TX2: GPIO" );
+  Serial.println( SERIAL_TX2 );
+}
+
 // Set row pin state with bounds checking
 void setRowState( int row, bool state ) {
   if ( row >= 0 && row < NumRows ) {
@@ -85,6 +96,65 @@ void checkBluetoothConnection() {
     if ( millis() - lastConnectionCheck > 5000 ) { // Log every 5 seconds
       Serial.println( "Waiting for BLE connection..." );
       lastConnectionCheck = millis();
+    }
+  }
+}
+
+// Process incoming serial data from left split
+void processLeftSplitData() {
+  if ( Serial2.available() ) {
+    String receivedData = Serial2.readStringUntil( '\n' );
+    receivedData.trim(); // Remove whitespace
+    
+    if ( receivedData.length() > 0 ) {
+      // Parse the data format: "P:keycode" or "R:keycode"
+      if ( receivedData.startsWith( "P:" ) ) {
+        // Key press from left split
+        int keyCode = receivedData.substring( 2 ).toInt();
+        handleLeftSplitKeyPress( keyCode );
+      } else if ( receivedData.startsWith( "R:" ) ) {
+        // Key release from left split
+        int keyCode = receivedData.substring( 2 ).toInt();
+        handleLeftSplitKeyRelease( keyCode );
+      }
+    }
+  }
+}
+
+// Handle key press from left split
+void handleLeftSplitKeyPress( int keyCode ) {
+  if ( Kbd.isConnected() ) {
+    // Process special keys or regular keys
+    if ( keyCode >= 32 && keyCode <= 126 ) {
+      // Printable character
+      Kbd.press( keyCode );
+      Serial.print( "Left split PRESS: '" );
+      Serial.print( (char)keyCode );
+      Serial.println( "'" );
+    } else {
+      // Special key (modifier, function key, etc.)
+      Kbd.press( keyCode );
+      Serial.print( "Left split PRESS: " );
+      Serial.println( keyCode );
+    }
+  }
+}
+
+// Handle key release from left split
+void handleLeftSplitKeyRelease( int keyCode ) {
+  if ( Kbd.isConnected() ) {
+    // Process special keys or regular keys
+    if ( keyCode >= 32 && keyCode <= 126 ) {
+      // Printable character
+      Kbd.release( keyCode );
+      Serial.print( "Left split RELEASE: '" );
+      Serial.print( (char)keyCode );
+      Serial.println( "'" );
+    } else {
+      // Special key (modifier, function key, etc.)
+      Kbd.release( keyCode );
+      Serial.print( "Left split RELEASE: " );
+      Serial.println( keyCode );
     }
   }
 }

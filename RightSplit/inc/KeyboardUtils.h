@@ -7,9 +7,15 @@
 // Function prototypes
 void initializeHardware();
 void initializeBluetooth();
+void initializeSerial(); // Add this for left split communication
 void checkBluetoothConnection();
 void setRowState( int row, bool state );
-void changeID( int DevNum );  // Added this function
+void changeID( int DevNum );
+
+// New functions for left split communication
+void processLeftSplitData();
+void handleLeftSplitKeyPress( int keyCode );
+void handleLeftSplitKeyRelease( int keyCode );
 
 // Global variables
 extern int RowCnt;

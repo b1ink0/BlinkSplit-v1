@@ -19,7 +19,11 @@
 #define Row5 13
 #define Row6 14
 
-//Matrix setup - Updated for 6x6
+// Serial communication pins for left split communication
+#define SERIAL_RX2 25  // GPIO25 - connects to D+ of USB-C (from left split TX)
+#define SERIAL_TX2 26  // GPIO26 - connects to D- of USB-C (to left split RX)
+
+//Matrix setup - Updated for 6x8
 #define NumRows 6
 #define NumCols 8
 #define NumLayers 1

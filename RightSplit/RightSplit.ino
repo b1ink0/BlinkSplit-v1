@@ -19,10 +19,13 @@
 //Setup, once on boot
 void setup() {
   Serial.begin( 115200 );
-  Serial.println( "Starting keyboard setup..." );
+  Serial.println( "Starting right split keyboard setup..." );
   
   initializeHardware();
   initializeBluetooth();
+  initializeSerial(); // Initialize serial for left split communication
+  
+  Serial.println( "Right split initialization complete" );
 }
 
 //Main loop
@@ -30,8 +33,12 @@ void loop() {
   checkBluetoothConnection();
   
   if ( Kbd.isConnected() ) {
+    // Scan right split matrix
     scanMatrix();
+    
+    // Process data from left split
+    processLeftSplitData();
   }
   
-  delay( 10 ); // Scan rate control
+  delay( 5 ); // Faster scan rate for better responsiveness
 }
