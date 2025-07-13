@@ -6,9 +6,11 @@
 #include "../inc/KeyboardUtils.h"
 
 //Setup keyboard - moved from main file
-BleKeyboard Kbd( "Sanctuary Keyboard", "Foster Phillips", 100 );
+BleKeyboard Kbd( "Split Keyboard", "b1ink0", 100 );
 
 // Code to "store" devices, so that the keyboard can switch connections on the fly
+// Adapted from : https://github.com/Cemu0/ESP32_USBHOST_TO_BLE_KEYBOARD/blob/main/src/USBHIDBootBLEKbd.cpp
+// Primarily stores the selected MAC address in EEPROM storage
 const int maxdevice = 3;
 uint8_t MACAddress[maxdevice][ 6 ] = 
 {
@@ -17,9 +19,13 @@ uint8_t MACAddress[maxdevice][ 6 ] =
   {0x31, 0xAE, 0xAC, 0x42, 0x0A, 0x31}
 };
 
+// Basically just change the selected ID and reset - MAC address can only be changed before the keyboard start, so write to store selection, until changed again
+// Take in device number, and set the EEPROM to the selected - selects what address to shift to, instead of iterating to that address
 void changeID( int DevNum ) {
+    //Make sure the selection is valid
     if( DevNum < maxdevice )
     {
+      //Write and commit to storage, reset ESP 32
       EEPROM.write(0,DevNum);
       EEPROM.commit();
       esp_sleep_enable_timer_wakeup( 1 );
@@ -32,10 +38,17 @@ int RowCnt = 0;
 int LayerCnt = 0;
 static bool connectionLogged = false;
 
+// Mode toggle variables
+int currentOutputMode = OUTPUT_MODE_BLE; // Default to BLE mode
+bool lastBootButtonState = HIGH;
+unsigned long lastBootButtonPress = 0;
+bool modeToggleInitialized = false;
+static const unsigned long DEBOUNCE_DELAY = 50; // 50ms debounce
+
 // PCF8575 variables for left split
 bool pcfInitialized = false;
 bool leftSplitConnected = false;
-static uint16_t pcfState = 0xFFFF;
+static uint16_t pcfState = 0xFFFF; // Initial state with all pins HIGH
 static byte detectedPCFAddress = 0;
 static unsigned long lastErrorTime = 0;
 static int errorCount = 0;
@@ -61,6 +74,9 @@ void initializeHardware() {
   Serial.print( "Device chosen: " );
   Serial.println( deviceChose );
   esp_base_mac_addr_set( &MACAddress[ deviceChose ][ 0 ] );
+  
+  // Initialize mode toggle
+  initializeModeToggle();
   
   Serial.println( "Right split GPIO initialized" );
 }
@@ -236,4 +252,67 @@ void checkBluetoothConnection() {
 // Get the detected PCF8575 address
 byte getPCF8575Address() {
   return detectedPCFAddress;
+}
+
+// Initialize mode toggle functionality
+void initializeModeToggle() {
+  pinMode( BOOT_BUTTON_PIN, INPUT_PULLUP );
+  lastBootButtonState = digitalRead( BOOT_BUTTON_PIN );
+  modeToggleInitialized = true;
+  
+  Serial.println( "Mode toggle initialized - Boot button configured" );
+  Serial.print( "Current output mode: " );
+  Serial.println( currentOutputMode == OUTPUT_MODE_BLE ? "BLE" : "SERIAL" );
+}
+
+// Check for mode toggle button press
+void checkModeToggle() {
+  if ( !modeToggleInitialized ) {
+    return;
+  }
+  
+  bool currentButtonState = digitalRead( BOOT_BUTTON_PIN );
+  
+  // Check for button press (HIGH to LOW transition with debounce)
+  if ( currentButtonState == LOW && lastBootButtonState == HIGH ) {
+    if ( millis() - lastBootButtonPress > DEBOUNCE_DELAY ) {
+      toggleOutputMode();
+      lastBootButtonPress = millis();
+    }
+  }
+  
+  lastBootButtonState = currentButtonState;
+}
+
+// Toggle between BLE and Serial output modes
+void toggleOutputMode() {
+  if ( currentOutputMode == OUTPUT_MODE_BLE ) {
+    setOutputMode( OUTPUT_MODE_SERIAL );
+  } else {
+    setOutputMode( OUTPUT_MODE_BLE );
+  }
+}
+
+// Set the output mode
+void setOutputMode( int mode ) {
+  if ( mode == OUTPUT_MODE_BLE || mode == OUTPUT_MODE_SERIAL ) {
+    currentOutputMode = mode;
+    
+    Serial.print( "Output mode changed to: " );
+    if ( mode == OUTPUT_MODE_BLE ) {
+      Serial.println( "BLE" );
+    } else {
+      Serial.println( "SERIAL" );
+    }
+    
+    // Release all currently pressed keys when switching modes
+    if ( mode == OUTPUT_MODE_BLE && Kbd.isConnected() ) {
+      Kbd.releaseAll();
+    }
+  }
+}
+
+// Get current output mode
+int getOutputMode() {
+  return currentOutputMode;
 }

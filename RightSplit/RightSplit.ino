@@ -18,7 +18,7 @@
 
 //Setup, once on boot
 void setup() {
-  Serial.begin( 115200 );
+  Serial.begin( SERIAL_BAUD_RATE );
   Serial.println( "Starting Keyboard setup..." );
   
   initializeHardware();    // Initialize right split GPIO
@@ -31,10 +31,17 @@ void setup() {
 //Main loop
 void loop() {  
   checkBluetoothConnection();
+  checkModeToggle();
   
-  if ( Kbd.isConnected() ) {
-    scanMatrix(); // Scans both right and left splits
+  if ( getOutputMode() == OUTPUT_MODE_BLE ) {
+    // BLE mode - only scan if connected
+    if ( Kbd.isConnected() ) {
+      scanMatrix();
+    }
+    delay( 5 ); // Standard scan rate for BLE
+  } else {
+    // Serial mode - always scan regardless of BLE connection
+    scanMatrix();
+    delay( 2 ); // Faster scan rate for serial mode
   }
-  
-  delay( 5 ); // Optimized scan rate
 }

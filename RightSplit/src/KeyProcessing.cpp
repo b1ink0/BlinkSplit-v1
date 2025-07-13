@@ -20,7 +20,7 @@ void scanRightMatrix() {
   // Set current row LOW to scan
   setRowState( RowCnt, LOW );
   
-  delayMicroseconds( 20 );
+  delayMicroseconds( 5 );
   
   // Scan all columns in current row
   for ( int ColCnt = 0; ColCnt < NumCols; ColCnt++ ) {
@@ -47,7 +47,7 @@ void scanLeftMatrix() {
   // Set current row LOW to scan
   setLeftRowState( RowCnt, LOW );
   
-  delayMicroseconds( 20 );
+  delayMicroseconds( 5 );
   
   // Read all pins from PCF8575
   uint16_t pinStates = readPCF8575();
@@ -138,6 +138,21 @@ void handleLeftKeyRelease( int row, int col ) {
   LeftPressedCheck[ LayerCnt ][ row ][ col ] = OFF;
 }
 
+// Process regular keys
+void processRegularKey( int keyCode, bool isPress ) {
+  if ( getOutputMode() == OUTPUT_MODE_BLE ) {
+    // Send via BLE
+    if ( isPress ) {
+      Kbd.press( keyCode );
+    } else {
+      Kbd.release( keyCode );
+    }
+  } else {
+    // Send via Serial
+    sendKeyViaSerial( keyCode, isPress );
+  }
+}
+
 // Process special function keys
 void processSpecialKey( int keyCode, int row, int col, bool isPress ) {
   if ( isPress ) {
@@ -151,7 +166,9 @@ void processSpecialKey( int keyCode, int row, int col, bool isPress ) {
         ESP.restart();
         break;
       case FUNCTION_SW:
-        Kbd.releaseAll();
+        if ( getOutputMode() == OUTPUT_MODE_BLE ) {
+          Kbd.releaseAll();
+        }
         LayerCnt++;
         Serial.println( "Layer UP" );
         break;
@@ -159,11 +176,13 @@ void processSpecialKey( int keyCode, int row, int col, bool isPress ) {
         // Do nothing for null key
         break;
       case NEXT:
-        Kbd.press( KEY_MEDIA_NEXT_TRACK );
-        Kbd.releaseAll();
-        break;
       case PREV:
-        Kbd.press( KEY_MEDIA_PREVIOUS_TRACK );
+        if ( getOutputMode() == OUTPUT_MODE_BLE ) {
+          Kbd.press( keyCode == NEXT ? KEY_MEDIA_NEXT_TRACK : KEY_MEDIA_PREVIOUS_TRACK );
+          Kbd.releaseAll();
+        } else {
+          sendSpecialKeyViaSerial( keyCode, isPress );
+        }
         break;
     }
   } else {
@@ -176,27 +195,22 @@ void processSpecialKey( int keyCode, int row, int col, bool isPress ) {
         if ( LayerCnt > 0 ) {
           LayerCnt--;
         }
-        Kbd.releaseAll();
+        if ( getOutputMode() == OUTPUT_MODE_BLE ) {
+          Kbd.releaseAll();
+        }
         Serial.println( "Layer DOWN" );
         break;
       case NULL_CON:
         break;
       case NEXT:
-        Kbd.release( KEY_MEDIA_NEXT_TRACK );
-        break;
       case PREV:
-        Kbd.release( KEY_MEDIA_PREVIOUS_TRACK );
+        if ( getOutputMode() == OUTPUT_MODE_BLE ) {
+          Kbd.release( keyCode == NEXT ? KEY_MEDIA_NEXT_TRACK : KEY_MEDIA_PREVIOUS_TRACK );
+        } else {
+          sendSpecialKeyViaSerial( keyCode, isPress );
+        }
         break;
     }
-  }
-}
-
-// Process regular keys
-void processRegularKey( int keyCode, bool isPress ) {
-  if ( isPress ) {
-    Kbd.press( keyCode );
-  } else {
-    Kbd.release( keyCode );
   }
 }
 
@@ -218,4 +232,20 @@ void logKeyAction( int keyCode, bool isPress, const char* split ) {
     Serial.print( ": " );
     Serial.println( keyCode );
   }
+}
+
+// Send regular key via Serial
+void sendKeyViaSerial( int keyCode, bool isPress ) {
+  Serial.print( "KEY:" );
+  Serial.print( keyCode );
+  Serial.print( ":" );
+  Serial.println( isPress ? "PRESS" : "RELEASE" );
+}
+
+// Send special key via Serial
+void sendSpecialKeyViaSerial( int keyCode, bool isPress ) {
+  Serial.print( "SPECIAL:" );
+  Serial.print( keyCode );
+  Serial.print( ":" );
+  Serial.println( isPress ? "PRESS" : "RELEASE" );
 }

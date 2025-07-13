@@ -14,6 +14,13 @@ void setRowState( int row, bool state );
 void setLeftRowState( int row, bool state );
 void changeID( int DevNum );
 
+// Mode toggle functions
+void initializeModeToggle();
+void checkModeToggle();
+void toggleOutputMode();
+void setOutputMode( int mode );
+int getOutputMode();
+
 // PCF8575 functions for left split
 uint16_t readPCF8575();
 bool writePCF8575( uint16_t value );
@@ -24,6 +31,12 @@ extern int RowCnt;
 extern int LayerCnt;
 extern bool pcfInitialized;
 extern bool leftSplitConnected;
+
+// Mode toggle variables
+extern int currentOutputMode;
+extern bool lastBootButtonState;
+extern unsigned long lastBootButtonPress;
+extern bool modeToggleInitialized;
 
 // External references to arrays from Matrix.cpp
 extern short Rows[ NumRows ];
