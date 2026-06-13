@@ -6,7 +6,7 @@
 #include "../inc/KeyboardUtils.h"
 
 //Setup keyboard
-BleKeyboard Kbd( "Split Keyboard", "b1ink0", 100 );
+BleKeyboard Kbd( "BlinkSplit v1", "b1ink0", 100 );
 
 // Code to "store" devices, so that the keyboard can switch connections on the fly
 // Adapted from : https://github.com/Cemu0/ESP32_USBHOST_TO_BLE_KEYBOARD/blob/main/src/USBHIDBootBLEKbd.cpp

@@ -1,44 +1,53 @@
-# The Sanctuary Keyboard (Firmware)
-A Bluetooth Wireless Mechanical Keyboard - That can be currently built!
+# BlinkSplit v1
 
-Based on the ESP32, the Sanctuary functions as a completely wireless keyboard, that can be designed and built yourself. Rather than using obsolete BLE microcontrollers, an ESP32 was chosen, a cheap and readily available BLE microcontroller. Instructions will be available through an [instructables link](https://www.instructables.com/ESP32-Bluetooth-Mechanical-Keyboard-the-Sanctuary/)
-## [Demo Video](https://youtu.be/0jshQPa9tzA)
-[![TheSanctuaryDemoVideo](https://img.youtube.com/vi/0jshQPa9tzA/0.jpg)](https://youtu.be/0jshQPa9tzA)
+BlinkSplit v1 is custom firmware for my hand-wired split keyboard build.
 
-## [Hardware Files Available Here](https://github.com/LegoRocket/Sanctuary-Keyboard-Hardware)
+Reference keyboard used for this build: Redgear Shadow Blade (used as the donor keyboard for switches, keycaps, and shell parts).
 
-## [Instructions Available Here!](https://www.instructables.com/ESP32-Bluetooth-Mechanical-Keyboard-the-Sanctuary/)
+## Firmware Architecture
 
-## Firmware
+The firmware runs on an ESP32 and scans both halves:
 
-Basic Firmware for The Santuary Wireless Keyboard. Library used for keystrokes is the [ESP32-BLE-Keyboard](https://github.com/T-vK/ESP32-BLE-Keyboard)
+- Right half: direct GPIO matrix scan
+- Left half: PCF8575 over I2C
+- Output modes: BLE keyboard mode and optional serial output mode
 
-All code is included in the "KeyboardFirmwareRev1" folder. Yes, I used the Arduino IDE, but I've tried to document, and separate out the code for legibility.
+## Flashing
 
-Based on the ESP32, this is a completely wireless keyboard, to be used however you would like. 
+1. Install Arduino IDE 2.x.
+2. Install the ESP32 boards package in Arduino IDE.
+3. Install the ESP32 BLE Keyboard library by T-vK.
+4. Open `main.ino`.
+5. Select your ESP32 board and COM port.
+6. Upload.
 
-I unfortunately don't have the ability to sell kits or keyboards, but all files and instructions are available in the repo linked above. This repo is purely for the firmware of the keyboard, to allow for others to fork, and modify their own code.
+### Optional Serial Bridge
 
-QMK and other pre-existing keyboard firmware are incompatible, leaving my programming skills up to the test. Basic functionality exists, however future features plan to be added, and as the program gets more complex, so does the ability to track changes (hence git). However, I will fully admit that I am not the greatest programmer in the world, and likely don't have time to manage this repo in full, so please feel free to fork it into your own repo.
+If you want to use serial mode on the firmware side, the host bridge is in `serial/main.py`.
 
-### Features:
-- Full key support
-- Multimedia Keys
-- Rotary Encoders
-- Multiple Device Support (Currently 3)
-- RGB Lighting (Currently only Cyan is set)
+Required Python packages:
 
-### TODO:
-- Implement Battery monitoring (Requires additional Hardware)
-- Implement Different RGB animations
-- Implement Colour Brightness (and turn off)
-- Implement Software Shutdown (Current solution is a hardware disconnect)
+- Python 3
+- pyserial
+- pyautogui
 
-### Updates
-Unfortunately I don't have a lot of time on my hands to flesh out the code. I have written enough to make it a daily driver keyboard (I'm typing on the Sanctuary right now), but it means that updates will be very infrequent. Feel free to fork and modify the code to your own ability, as long as it complies within the License provided.
+## Parts Used
 
-# [Follow my Socials](https://linktr.ee/Lego_Rocket)
+| Part | Notes |
+| --- | --- |
+| ESP32 dev board | Main controller |
+| PCF8575 I2C expander | Left-half matrix scan |
+| Mechanical switches | Reused from donor keyboard |
+| Keycaps | Reused from donor keyboard |
+| USB-C cable / split interconnect wiring | Half-to-half connection and routing |
+| Reset / mode buttons | Mounted on the back |
+| Hookup wire, solder, heatshrink | Hand wiring and insulation |
+| Original keyboard shell parts | Reused and modified |
 
-## License Information
+## Credits
 
-Licensed under the GNU GPLv3 license. More information available in the LICENSE.md file.
+- Original Sanctuary firmware by [Foster Phillips](https://linktr.ee/Lego_Rocket)
+
+## License
+
+GNU GPLv3. See [LICENSE.md](LICENSE.md).

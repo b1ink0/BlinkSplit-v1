@@ -1,6 +1,5 @@
 /**
- * This is a fork of Sanctuary Keyboard Firmware originally designed by Foster Phillips https://linktr.ee/Lego_Rocket
- * @b1ink0 modified the firmware for making it work with a custom split keyboard design.
+ * BlinkSplit v1 firmware for a custom hand wired split keyboard build.
  */
 
 #include <BleKeyboard.h>
@@ -10,13 +9,13 @@
 
 void setup() {
   Serial.begin( SERIAL_BAUD_RATE );
-  Serial.println( "Starting Keyboard setup..." );
+  Serial.println( "Starting BlinkSplit v1 setup..." );
   
   initializeHardware();    // Initialize right split GPIO
   initializeI2C();         // Initialize I²C for left split
   initializeBluetooth();   // Initialize BLE keyboard
   
-  Serial.println( "Keyboard initialization complete" );
+  Serial.println( "BlinkSplit v1 initialization complete" );
 }
 
 //Main loop
