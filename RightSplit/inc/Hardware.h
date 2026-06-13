@@ -2,7 +2,7 @@
 #define OFF 0
 #define ON 1
 
-// Boot button for mode toggle (GPIO0 on most ESP32 boards)
+// Boot button for mode toggle (GPIO0 on ESP32 boards)
 #define BOOT_BUTTON_PIN 0
 
 // Output mode definitions
@@ -10,7 +10,7 @@
 #define OUTPUT_MODE_SERIAL 1
 
 // Serial communication settings
-#define SERIAL_BAUD_RATE 230400  // Faster baud rate for better performance 
+#define SERIAL_BAUD_RATE 230400
 
 //Pin Definitions - Right split direct GPIO
 #define Col7 15

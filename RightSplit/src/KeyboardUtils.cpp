@@ -5,7 +5,7 @@
 #include "../inc/Hardware.h"
 #include "../inc/KeyboardUtils.h"
 
-//Setup keyboard - moved from main file
+//Setup keyboard
 BleKeyboard Kbd( "Split Keyboard", "b1ink0", 100 );
 
 // Code to "store" devices, so that the keyboard can switch connections on the fly

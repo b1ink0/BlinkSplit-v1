@@ -1,22 +1,13 @@
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                  //
-//    Firmware for the Sanctuary Keyboard                                                           //
-//    Designed by: Foster Phillips, Lego_Rocket on many social media                                //
-//    https://linktr.ee/Lego_Rocket                                                                 //
-//    Primarily used to run the firmware behind the Sanctuary                                       //
-//    Keyboard and kits to be sold at one point                                                     //
-//    Firmware will be open source - hardware will be closed source                                 //
-//    Main file - contains only setup() and loop() functions                                        //
-//                                                                                                  //
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * This is a fork of Sanctuary Keyboard Firmware originally designed by Foster Phillips https://linktr.ee/Lego_Rocket
+ * @b1ink0 modified the firmware for making it work with a custom split keyboard design.
+ */
 
-//Include headers for all functionality
 #include <BleKeyboard.h>
 #include "inc/Hardware.h"
 #include "inc/KeyboardUtils.h"
 #include "inc/KeyProcessing.h"
 
-//Setup, once on boot
 void setup() {
   Serial.begin( SERIAL_BAUD_RATE );
   Serial.println( "Starting Keyboard setup..." );
@@ -38,10 +29,11 @@ void loop() {
     if ( Kbd.isConnected() ) {
       scanMatrix();
     }
-    delay( 5 ); // Standard scan rate for BLE
+    // Scan rate.
+    delay( 5 );
   } else {
     // Serial mode - always scan regardless of BLE connection
     scanMatrix();
-    delay( 2 ); // Faster scan rate for serial mode
-  }
+    // Scan rate.
+    delay( 2 );
 }
