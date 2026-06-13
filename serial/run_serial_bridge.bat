@@ -9,6 +9,6 @@ echo Running at 230400 baud for maximum performance
 echo Press Ctrl+C to stop
 echo.
 
-python serial_to_keystroke.py
+python main.py
 
 pause

@@ -10,7 +10,7 @@ echo "Running at 230400 baud for maximum performance"
 echo "Press Ctrl+C to stop"
 echo ""
 
-python3 serial_to_keystroke.py
+python3 main.py
 
 echo ""
 echo "Press Enter to exit..."
