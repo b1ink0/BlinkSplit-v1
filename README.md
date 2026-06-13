@@ -4,6 +4,8 @@ BlinkSplit v1 is custom firmware for my hand-wired split keyboard build.
 
 Reference keyboard used for this build: Redgear Shadow Blade (used as the donor keyboard for switches, keycaps, and shell parts).
 
+<img style="border-radius: 20px" src="./assets/1.jpg">
+
 ## Firmware Architecture
 
 The firmware runs on an ESP32 and scans both halves:
